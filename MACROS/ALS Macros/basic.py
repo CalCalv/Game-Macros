@@ -1,0 +1,111 @@
+import pyautogui
+import time
+import subprocess
+import keyboard
+import threading
+import os
+import sys
+
+running_tinytasks = []
+
+# -------- PATH HELPERS -------- #
+def get_script_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
+def get_image_path(image_name):
+    return os.path.join(get_script_dir(), "pictures", image_name)
+
+def get_tinytask_path(tinytask_name):
+    return os.path.join(get_script_dir(), "exe", tinytask_name)
+
+# -------- TINYTASK CONTROL -------- #
+def start_tinytask(tinytask_name):
+    exe_path = get_tinytask_path(tinytask_name)
+    proc = subprocess.Popen([exe_path])
+    running_tinytasks.append(proc)
+    print(f"Started TinyTask with PID: {proc.pid}")
+    return proc
+
+def kill_tinytask_processes():
+    print("Killing all tracked TinyTask processes...")
+    for proc in running_tinytasks:
+        try:
+            proc.terminate()
+            if proc.poll() is None:
+                proc.kill()
+            print(f"Killed TinyTask process PID: {proc.pid}")
+        except Exception as e:
+            print(f"Error killing process: {e}")
+    running_tinytasks.clear()
+
+# -------- ESCAPE LISTENER -------- #
+def esc_listener():
+    keyboard.wait('esc')
+    print("\nEscape key pressed! Killing TinyTask and exiting now...")
+    kill_tinytask_processes()
+    os._exit(0)
+
+threading.Thread(target=esc_listener, daemon=True).start()
+
+# -------- IMAGE LOGIC -------- #
+class ImageTimeoutError(Exception):
+    pass
+
+def locate_image(image_path, confidence=0.7, region=None):
+    try:
+        return pyautogui.locateOnScreen(image_path, confidence=confidence, region=region)
+    except Exception as e:
+        print(f"Error searching for {image_path}: {e}")
+        return None
+
+def wait_for_image(image_name, confidence=0.7, check_interval=0.1, timeout=30):
+    image_path = get_image_path(image_name)
+    print(f"Waiting for image: {image_path} (timeout: {timeout}s)...")
+    start_time = time.time()
+    while True:
+
+        pyautogui.click()
+
+        location = locate_image(image_path, confidence)
+        if location:
+            print(f"Image found at: {location}")
+            return location
+        if time.time() - start_time > timeout:
+            raise ImageTimeoutError(f"Timeout: {image_path} not found after {timeout} seconds.")
+        time.sleep(check_interval)
+
+# -------- MAIN -------- #
+def smooth_hover_click(x,y):
+    pyautogui.moveTo(x,y)
+    pyautogui.click()
+    pyautogui.click()
+
+def run():
+    while True:
+        try:
+            wait_for_image("start.png", timeout=5)
+            proc = start_tinytask("chrollo.exe")
+            proc.wait()
+            time.sleep(1)
+        except ImageTimeoutError:
+            print("Image not found, exiting.")
+            kill_tinytask_processes()
+            os._exit(0)
+            break
+
+
+def infin():
+    while True:
+        proc = start_tinytask("dhinfin.exe")
+        proc.wait()
+
+        # Wait until retry.png appears
+        location = wait_for_image("retry.png", confidence=0.7, check_interval=5, timeout=9999)
+
+        # Click the center of the image
+        center = pyautogui.center(location)
+        smooth_hover_click(center.x, center.y)
+        
+run()
+
+
