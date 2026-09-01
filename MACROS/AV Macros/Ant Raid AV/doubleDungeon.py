@@ -7,54 +7,50 @@ import os
 import sys
 from pyautogui import ImageNotFoundException
 
-# ==============================
 # Path handling
-# ==============================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def get_path(*parts):
     """Join path parts relative to the script directory."""
     return os.path.join(BASE_DIR, *parts)
 
-# ==============================
-# Track TinyTask processes
-# ==============================
+#Tinytasks
 running_tinytasks = []
 
 def kill_tinytask_processes():
-    print("Killing all tracked TinyTask processes...")
+    print("Killing all TinyTask processes.")
     for proc in running_tinytasks:
         try:
             proc.terminate()
             time.sleep(0.2)
             if proc.poll() is None:
                 proc.kill()
-            print(f"Killed TinyTask process PID: {proc.pid}")
         except Exception as e:
-            print(f"Error killing process: {e}")
+            print(f"Error")
     running_tinytasks.clear()
 
+#emergenci exit
 def esc_listener():
     keyboard.wait('esc')
-    print("\nEscape key pressed! Killing TinyTask and exiting now...")
+    print("\nExiting")
     kill_tinytask_processes()
     os._exit(0)
 
 threading.Thread(target=esc_listener, daemon=True).start()
 
-# ==============================
-# Core functions
-# ==============================
 def run_tinytask(exe_path):
     proc = subprocess.Popen([exe_path])
     running_tinytasks.append(proc)
     return proc
 
+#mouse
 def smooth_hover_click(target_x, target_y):
     pyautogui.moveTo(target_x, target_y)
     pyautogui.click()
     pyautogui.click()
 
+
+#image logic
 def safe_locate(image_path, confidence=0.7, region=None):
     try:
         return pyautogui.locateOnScreen(image_path, confidence=confidence, region=region)
@@ -65,11 +61,10 @@ def safe_locate(image_path, confidence=0.7, region=None):
         return None
 
 def find_click_or_reset(image_path, tiny_task_path, confidence=0.8, check_interval=0.1):
-    print(f"Starting detection loop for {image_path} (Press ESC to stop)")
     try:
         while True:
             if retry(get_path("pictures", "retry.png"), 0.7):
-                print("Retry handled, restarting detection loop...")
+                print("Retrying")
 
             location = safe_locate(image_path, confidence)
             if location:
@@ -81,13 +76,13 @@ def find_click_or_reset(image_path, tiny_task_path, confidence=0.8, check_interv
                 time.sleep(check_interval)
                 return
             else:
-                print("Image not found. Running TinyTask macro to reset...")
+                print("Image not found. Reseting.")
                 run_tinytask(tiny_task_path).wait()
                 cancel(get_path("pictures", "cancel.png"))
-                print("Reset complete. Scanning again shortly...")
+                print("Reset complete.")
                 time.sleep(check_interval)
     except KeyboardInterrupt:
-        print("\nStopped by user. Exiting gracefully...")
+        print("\nExiting")
         kill_tinytask_processes()
         sys.exit(0)
 
@@ -101,7 +96,6 @@ def wait_for_image(image_path, confidence=0.7, check_interval=0.1):
         time.sleep(check_interval)
 
 def priority_image_click(image_list, confidence=0.5, check_interval=0.2):
-    print(f"Starting priority image detection... (Press ESC to stop)")
     try:
         while True:
             for image_path in image_list:
@@ -111,22 +105,21 @@ def priority_image_click(image_list, confidence=0.5, check_interval=0.2):
                     center = pyautogui.center(location)
                     run_tinytask(get_path("exe", "swtich.exe")).wait()
                     smooth_hover_click(center.x, center.y)
-                    print(f"Clicked on {image_path}. Ending search.")
                     return
             time.sleep(check_interval)
     except KeyboardInterrupt:
-        print("\nStopped by user. Exiting gracefully...")
+        print("\nExiting")
         kill_tinytask_processes()
         sys.exit(0)
 
 def retry(image_path, confidence):
     location = safe_locate(image_path, confidence)
     if location:
-        print(f"Retry image found at: {location}, starting retry loop...")
+        print(f"Retry image found at: {location}")
         while True:
             location = safe_locate(image_path, confidence)
             if not location:
-                print("Retry image disappeared. Exiting retry loop.")
+                print("Retry image not found")
                 break
 
             center = pyautogui.center(location)
@@ -145,7 +138,7 @@ def retry(image_path, confidence):
 def cancel(secondary_image_path, confidence=0.7):
     location = safe_locate(secondary_image_path, confidence)
     if location:
-        print(f"Cancel image found at: {location} — Clicking.")
+        print(f"Cancel image found at: {location}")
         center = pyautogui.center(location)
         run_tinytask(get_path("exe", "swtich.exe")).wait()
         smooth_hover_click(center.x, center.y)
@@ -153,9 +146,7 @@ def cancel(secondary_image_path, confidence=0.7):
     else:
         return False
 
-# ==============================
-# Image list
-# ==============================
+
 image_list = [
     get_path("pictures", "harvest.png"),
     get_path("pictures", "uncommonloot.png"),
@@ -177,14 +168,11 @@ image_list = [
     get_path("pictures", "strong.png"),
 ]
 
-# ==============================
-# Phases
-# ==============================
 def phase_routine(exe_file):
     while cancel(get_path("pictures", "cancel.png")):
         time.sleep(0.3)
     if retry(get_path("pictures", "retry.png"), 0.7):
-        print("Retry handled, restarting run sequence...")
+        print("Retry")
         return False
     wait_for_image(get_path("pictures", "cards.png"), 0.5)
     priority_image_click(image_list, 0.7)
@@ -192,9 +180,6 @@ def phase_routine(exe_file):
     time.sleep(1)
     return True 
 
-# ==============================
-# Main loop
-# ==============================
 def run():
     restart = get_path("exe", "restart.exe")
 
@@ -221,10 +206,9 @@ def run():
             get_path("exe", "end.exe"),
         ]:
             if not phase_routine(exe_file):
-                print("Restarting cycle due to retry.")
+                print("Restarting cycle.")
                 break
         else:
             print("Cycle complete, restarting..q.")
 
-# Start script
 run()

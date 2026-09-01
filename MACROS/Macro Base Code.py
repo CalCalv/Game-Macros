@@ -13,7 +13,7 @@ import position
 
 runningTinytasks = []
 
-# -------- PATH HELPERS -------- #
+# File paths
 def getScriptDir():
     return os.path.dirname(os.path.abspath(__file__))
 
@@ -23,36 +23,33 @@ def getImagePath(imageName):
 def getTinytaskPath(tinytaskName):
     return os.path.join(getScriptDir(), "exe", tinytaskName)
 
-# -------- TINYTASK CONTROL -------- #
+# Tiny tasks
 def startTinytask(tinytaskName):
     exePath = getTinytaskPath(tinytaskName)
     proc = subprocess.Popen([exePath])
     runningTinytasks.append(proc)
-    print(f"Started TinyTask with PID: {proc.pid}")
     return proc
 
 def killTinytaskProcesses():
-    print("Killing all tracked TinyTask processes...")
     for proc in runningTinytasks:
         try:
             proc.terminate()
             if proc.poll() is None:
                 proc.kill()
-            print(f"Killed TinyTask process PID: {proc.pid}")
         except Exception as e:
-            print(f"Error killing process: {e}")
+            print("Error")
     runningTinytasks.clear()
 
-# -------- ESCAPE LISTENER -------- #
+# Emergency exit
 def escListener():
     keyboard.wait('esc')
-    print("\nEscape key pressed! Killing TinyTask and exiting now...")
+    print("Exit")
     killTinytaskProcesses()
     os._exit(0)
 
 threading.Thread(target=escListener, daemon=True).start()
 
-# -------- IMAGE LOGIC -------- #
+# Image stuff
 class ImageTimeoutError(Exception):
     pass
 
@@ -62,7 +59,6 @@ def locateImage(imagePath, region=None, confidence=0.7):
     """
     template = cv2.imread(imagePath, cv2.IMREAD_GRAYSCALE)
     if template is None:
-        print(f"Template image not found: {imagePath}")
         return None
     templateWidth, templateHeight = template.shape[::-1]
 
@@ -78,7 +74,7 @@ def locateImage(imagePath, region=None, confidence=0.7):
             monitor = sct.monitors[0]  # full screen
 
         screenshot = np.array(sct.grab(monitor))
-        grayScreenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
+        grayScreenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2GRAY)
 
         matchResult = cv2.matchTemplate(grayScreenshot, template, cv2.TM_CCOEFF_NORMED)
         matchLocations = np.where(matchResult >= confidence)
@@ -99,18 +95,16 @@ def waitForImage(imageName, confidence=0.7, checkInterval=0.05, timeout=30, regi
     Wait until the image appears on screen
     """
     imagePath = getImagePath(imageName)
-    print(f"Waiting for image: {imagePath} (timeout: {timeout}s)...")
     startTime = time.time()
     while True:
         location = locateImage(imagePath, region=region, confidence=confidence)
         if location:
-            print(f"Image found at: {location}")
             return location
         if time.time() - startTime > timeout:
-            raise ImageTimeoutError(f"Timeout: {imagePath} not found after {timeout} seconds.")
+            raise ImageTimeoutError(f"Timeout: {imagePath} not found")
         time.sleep(checkInterval)
 
-# -------- CONTROLS -------- #
+# Mouse movement
 def smoothHoverClick(x, y):
     pyautogui.moveTo(x, y)
     pyautogui.click()

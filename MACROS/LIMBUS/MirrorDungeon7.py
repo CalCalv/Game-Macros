@@ -19,7 +19,7 @@ pyautogui.PAUSE = 0
 
 runningTinytasks = []
 
-# -------- PATH HELPERS -------- #
+#File Path finding
 def getScriptDir():
     return os.path.dirname(os.path.abspath(__file__))
 
@@ -35,7 +35,7 @@ def loadImageUrl(url):
     image = cv2.imdecode(imageBytes, cv2.IMREAD_GRAYSCALE)
     return image
 
-# -------- TINYTASK CONTROL -------- #
+#Tinytask
 def startTinytask(tinytaskName):
     exePath = getTinytaskPath(tinytaskName)
     proc = subprocess.Popen([exePath])
@@ -55,7 +55,7 @@ def killTinytaskProcesses():
             print(f"Error killing process: {e}")
     runningTinytasks.clear()
 
-# -------- ESCAPE LISTENER -------- #
+#Emergency Exit
 def escListener():
     keyboard.wait('esc')
     print("\nEscape key pressed! Killing TinyTask and exiting now...")
@@ -64,7 +64,7 @@ def escListener():
 
 threading.Thread(target=escListener, daemon=True).start()
 
-# -------- IMAGE LOGIC -------- #
+#Image stuff
 class ImageTimeoutError(Exception):
     pass
 
@@ -132,9 +132,7 @@ def waitForImage(imageName, type , confidence=0.7, checkInterval=0.05, timeout=3
             raise ImageTimeoutError(f"Timeout: {imagePath} not found after {timeout} seconds.")
         time.sleep(checkInterval)
 
-# -------- CONTROLS -------- #
-
-
+# Mouse clicks
 
 def click(*args):
     if args is None:
@@ -168,8 +166,7 @@ def click(*args):
     time.sleep(1)
 
 
-# -------- Main -------- #
-
+#Main
 
 topNode = (1082,111)
 middleNode = (1082,420)
