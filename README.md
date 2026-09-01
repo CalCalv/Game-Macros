@@ -1,1 +1,2 @@
-These are macros meant to autoplay games
+# Game-Macros
+Python video game macros with image detection
